@@ -1,0 +1,919 @@
+/* ==========================================================================
+   RESURFACE — stylesheet
+   ==========================================================================
+   A break timer built on a diving metaphor: work is the dive, the break is
+   the ascent, and the page's colour depth literally rises from an abyssal
+   blue toward pale surface light over the course of a break. See script.js
+   for the mechanism that drives --depth on <body>.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. DESIGN TOKENS
+   -------------------------------------------------------------------------- */
+:root {
+  /* --- Ocean depth palette (dark -> light) --- */
+  --abyss:        #050d14;
+  --deep:         #0a2233;
+  --midwater:     #123b4f;
+  --kelp:         #1f6f5c;
+  --surface-blue: #7fd6d0;
+  --foam:         #eaf6f4;
+  --mist:         #cdeae7;
+
+  /* --- Accents --- */
+  --coral:        #ff7a59;
+  --coral-soft:   #ffb199;
+  --gold:         #f4c66b;
+
+  /* --- Text --- */
+  --ink-000:      #f4faf9;
+  --ink-100:      #d8ebe8;
+  --ink-300:      #9fc4c0;
+  --ink-500:      #6f9793;
+
+  /* --- Semantic (recomputed by JS as --depth 0..1 changes) --- */
+  --depth: 0;
+  --bg-a: var(--abyss);
+  --bg-b: var(--deep);
+
+  /* --- Type --- */
+  --font-display: 'Fraunces', Georgia, 'Iowan Old Style', serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+
+  /* --- Scale --- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+
+  /* --- Motion --- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 180ms;
+  --dur-med: 420ms;
+  --dur-slow: 900ms;
+
+  /* --- Elevation --- */
+  --shadow-soft: 0 10px 40px -12px rgba(0, 0, 0, 0.45);
+  --shadow-ring: 0 0 0 1px rgba(255, 255, 255, 0.06);
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 28px;
+  --radius-pill: 999px;
+
+  color-scheme: dark;
+}
+
+/* --------------------------------------------------------------------------
+   2. RESET / BASE
+   -------------------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  height: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink-000);
+  background: var(--abyss);
+  overflow-x: hidden;
+  transition: background var(--dur-slow) var(--ease-in-out);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 { font-family: var(--font-display); margin: 0; font-weight: 600; }
+p { margin: 0; }
+button { font-family: inherit; }
+ul { list-style: none; margin: 0; padding: 0; }
+svg { display: block; }
+
+a {
+  color: var(--surface-blue);
+  text-decoration-color: rgba(127, 214, 208, 0.4);
+  text-underline-offset: 3px;
+}
+a:hover { text-decoration-color: currentColor; }
+
+::selection {
+  background: var(--coral);
+  color: var(--abyss);
+}
+
+:focus-visible {
+  outline: 2px solid var(--coral-soft);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  background: var(--coral);
+  color: var(--abyss);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  z-index: 100;
+  transition: top var(--dur-fast) var(--ease-out);
+}
+.skip-link:focus { top: 1rem; }
+
+kbd {
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-bottom-width: 2px;
+  padding: 0.1em 0.5em;
+  border-radius: 6px;
+  font-size: 0.85em;
+}
+
+/* --------------------------------------------------------------------------
+   3. AMBIENT BACKDROP
+   -------------------------------------------------------------------------- */
+.ocean-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--midwater) 100%, transparent) 0%, transparent 60%),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--abyss) calc(100% - (var(--depth) * 100%)), var(--surface-blue) calc(var(--depth) * 100%)) 0%,
+      color-mix(in srgb, var(--deep) calc(100% - (var(--depth) * 100%)), var(--mist) calc(var(--depth) * 100%)) 55%,
+      color-mix(in srgb, var(--midwater) calc(100% - (var(--depth) * 100%)), var(--foam) calc(var(--depth) * 100%)) 100%
+    );
+  transition: background var(--dur-slow) linear;
+}
+
+.light-rays {
+  position: absolute;
+  top: -20%;
+  left: 10%;
+  width: 45%;
+  height: 140%;
+  background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.05) 48%, transparent 56%);
+  transform: rotate(8deg);
+  animation: rays-sweep 14s ease-in-out infinite;
+  opacity: calc(0.4 + var(--depth) * 0.6);
+}
+.light-rays--slow {
+  left: 55%;
+  width: 30%;
+  animation-duration: 22s;
+  animation-delay: -6s;
+  opacity: calc(0.25 + var(--depth) * 0.5);
+}
+
+@keyframes rays-sweep {
+  0%, 100% { transform: translateX(-4%) rotate(8deg); }
+  50% { transform: translateX(6%) rotate(11deg); }
+}
+
+.particles {
+  position: absolute;
+  inset: 0;
+}
+
+.particle {
+  position: absolute;
+  bottom: -5%;
+  width: var(--size, 6px);
+  height: var(--size, 6px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(234, 246, 244, 0.85), rgba(234, 246, 244, 0));
+  animation: particle-rise var(--dur, 18s) linear infinite;
+  animation-delay: var(--delay, 0s);
+  opacity: 0;
+}
+
+@keyframes particle-rise {
+  0%   { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  8%   { opacity: 0.55; }
+  92%  { opacity: 0.3; }
+  100% { transform: translate(var(--drift, 20px), -110vh) scale(1); opacity: 0; }
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 3px 3px;
+  mix-blend-mode: overlay;
+  opacity: 0.5;
+}
+
+/* --------------------------------------------------------------------------
+   4. HEADER
+   -------------------------------------------------------------------------- */
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.brand-mark__ring {
+  fill: none;
+  stroke: var(--surface-blue);
+  stroke-width: 2;
+  opacity: 0.7;
+}
+.brand-mark__wave {
+  fill: none;
+  stroke: var(--coral);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.brand-name {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* --- Technique switch (segmented control) --- */
+.technique-switch {
+  position: relative;
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-pill);
+}
+
+.technique-btn {
+  position: relative;
+  z-index: 1;
+  border: none;
+  background: transparent;
+  color: var(--ink-300);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+}
+.technique-btn:hover { color: var(--ink-000); }
+.technique-btn.is-active { color: var(--abyss); font-weight: 600; }
+.technique-btn__sep { opacity: 0.5; margin: 0 0.1em; }
+
+.technique-switch__thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  height: calc(100% - 8px);
+  width: var(--thumb-w, 33.33%);
+  transform: translateX(var(--thumb-x, 0));
+  background: linear-gradient(135deg, var(--surface-blue), var(--mist));
+  border-radius: var(--radius-pill);
+  transition: transform var(--dur-med) var(--ease-out), width var(--dur-med) var(--ease-out);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink-100);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.icon-btn:hover { background: rgba(255, 255, 255, 0.09); transform: translateY(-1px); }
+.icon-btn:active { transform: translateY(0); }
+.icon-btn .icon { width: 19px; height: 19px; fill: currentColor; }
+
+#soundToggle .icon--sound-off { display: none; }
+#soundToggle[aria-pressed="true"] .icon--sound-on { display: none; }
+#soundToggle[aria-pressed="true"] .icon--sound-off { display: block; }
+#soundToggle[aria-pressed="true"] { color: var(--coral); border-color: color-mix(in srgb, var(--coral) 40%, transparent); }
+
+/* --------------------------------------------------------------------------
+   5. MAIN LAYOUT
+   -------------------------------------------------------------------------- */
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-6) var(--space-7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.timer-eyebrow {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.75rem;
+  color: var(--ink-300);
+  margin-bottom: var(--space-5);
+}
+
+/* --------------------------------------------------------------------------
+   6. WORK STAGE — ring timer
+   -------------------------------------------------------------------------- */
+.timer-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding-block: var(--space-4);
+  animation: rise-in var(--dur-slow) var(--ease-out);
+}
+
+.ring-wrap {
+  position: relative;
+  width: min(300px, 72vw);
+  height: min(300px, 72vw);
+}
+
+.ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+
+.ring__track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.07);
+  stroke-width: 8;
+}
+
+.ring__progress {
+  fill: none;
+  stroke: var(--coral);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: 848.23;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s linear;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--coral) 55%, transparent));
+}
+
+.state-break .ring__progress { stroke: var(--surface-blue); }
+
+.ring-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.ring-face__time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(2.75rem, 9vw, 3.75rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.ring-face__sub {
+  font-size: 0.85rem;
+  color: var(--ink-300);
+  letter-spacing: 0.04em;
+}
+
+.session-dots {
+  display: flex;
+  gap: 8px;
+  margin-top: var(--space-5);
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 260px;
+}
+
+.session-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.session-dot.is-filled {
+  background: var(--coral);
+  transform: scale(1.15);
+}
+
+.timer-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.btn {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+  padding: 0.85rem 1.75rem;
+  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.btn:active { transform: scale(0.96); }
+
+.btn--primary {
+  background: linear-gradient(135deg, var(--coral), var(--coral-soft));
+  color: var(--abyss);
+  box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--coral) 70%, transparent);
+  min-width: 148px;
+}
+.btn--primary:hover { transform: translateY(-2px); box-shadow: 0 14px 34px -10px color-mix(in srgb, var(--coral) 80%, transparent); }
+.state-break .btn--primary { background: linear-gradient(135deg, var(--surface-blue), var(--mist)); box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--surface-blue) 60%, transparent); }
+
+.btn--ghost {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink-100);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.btn--ghost:hover { background: rgba(255, 255, 255, 0.09); }
+
+.btn--small { padding: 0.55rem 1.15rem; font-size: 0.85rem; }
+
+.timer-hint {
+  margin-top: var(--space-5);
+  color: var(--ink-500);
+  font-size: 0.85rem;
+  text-align: center;
+  max-width: 380px;
+}
+
+/* --------------------------------------------------------------------------
+   7. BREAK STAGE — breathing circle & guided ritual
+   -------------------------------------------------------------------------- */
+.break-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding-block: var(--space-4);
+  animation: rise-in var(--dur-slow) var(--ease-out);
+}
+
+.breath-wrap {
+  position: relative;
+  width: min(320px, 78vw);
+  height: min(320px, 78vw);
+  display: grid;
+  place-items: center;
+}
+
+.breath-rings { position: absolute; inset: 0; width: 100%; height: 100%; }
+.breath-ring {
+  fill: none;
+  stroke: rgba(234, 246, 244, 0.18);
+  stroke-width: 1;
+}
+.breath-ring--mid { stroke-dasharray: 2 10; animation: rotate-slow 60s linear infinite; transform-origin: center; }
+.breath-ring--outer { animation: rotate-slow 90s linear infinite reverse; transform-origin: center; }
+
+@keyframes rotate-slow {
+  to { transform: rotate(360deg); }
+}
+
+.breathing-circle {
+  position: relative;
+  width: 58%;
+  height: 58%;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  background: radial-gradient(circle at 35% 30%,
+    color-mix(in srgb, var(--surface-blue) 55%, white 10%),
+    color-mix(in srgb, var(--kelp) 70%, var(--midwater))
+  );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset,
+    0 20px 60px -15px rgba(0, 0, 0, 0.5),
+    0 0 60px -5px color-mix(in srgb, var(--surface-blue) 45%, transparent);
+  transform: scale(var(--breath-scale, 0.86));
+  transition: transform var(--breath-duration, 4s) var(--ease-in-out), box-shadow var(--breath-duration, 4s) var(--ease-in-out);
+}
+
+.breathing-circle__phase {
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 4vw, 1.5rem);
+  font-weight: 500;
+  color: var(--abyss);
+}
+
+.breathing-circle__count {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: color-mix(in srgb, var(--abyss) 75%, transparent);
+  min-height: 1.4em;
+}
+
+.stage-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+  padding: var(--space-5);
+  max-width: 460px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(6px);
+}
+
+.stage-card__icon {
+  font-size: 1.75rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.stage-card__title {
+  font-size: 1.05rem;
+  margin-bottom: 0.3rem;
+}
+
+.stage-card__body {
+  color: var(--ink-100);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.stage-dots {
+  display: flex;
+  gap: 8px;
+  margin-top: var(--space-4);
+}
+
+.stage-dot {
+  width: 22px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.14);
+  transition: background var(--dur-fast) var(--ease-out), width var(--dur-fast) var(--ease-out);
+}
+.stage-dot.is-active { background: var(--surface-blue); width: 34px; }
+.stage-dot.is-done { background: rgba(127, 214, 208, 0.45); }
+
+.break-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin-top: var(--space-6);
+}
+
+.break-footer__time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+  color: var(--ink-300);
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --------------------------------------------------------------------------
+   8. STATS PANEL
+   -------------------------------------------------------------------------- */
+.stats-panel {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  width: 100%;
+  margin-top: var(--space-7);
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: var(--space-4) var(--space-2);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.stat-card__value {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--surface-blue);
+}
+
+.stat-card__label {
+  font-size: 0.7rem;
+  color: var(--ink-500);
+  letter-spacing: 0.02em;
+}
+
+.stat-card--chart { justify-content: flex-end; }
+
+.week-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 34px;
+}
+
+.week-chart__bar {
+  width: 6px;
+  border-radius: 3px 3px 0 0;
+  background: rgba(255, 255, 255, 0.14);
+  min-height: 3px;
+  transition: height var(--dur-med) var(--ease-out);
+}
+.week-chart__bar.is-today { background: var(--coral); }
+.week-chart__bar.has-sessions:not(.is-today) { background: var(--surface-blue); opacity: 0.75; }
+
+/* --------------------------------------------------------------------------
+   9. FOOTER
+   -------------------------------------------------------------------------- */
+.site-footer {
+  text-align: center;
+  padding: var(--space-6) var(--space-4) var(--space-7);
+  color: var(--ink-500);
+  font-size: 0.82rem;
+}
+
+/* --------------------------------------------------------------------------
+   10. SETTINGS MODAL
+   -------------------------------------------------------------------------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 9, 14, 0.6);
+  backdrop-filter: blur(3px);
+  z-index: 40;
+  animation: fade-in var(--dur-fast) var(--ease-out);
+}
+
+.settings-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 2.5rem));
+  max-height: min(640px, calc(100vh - 3rem));
+  overflow-y: auto;
+  background: linear-gradient(180deg, #0d2a3c, #0a2233);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  z-index: 41;
+  animation: pop-in var(--dur-med) var(--ease-out);
+}
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop-in {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.settings-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-5) var(--space-3);
+  position: sticky;
+  top: 0;
+  background: inherit;
+}
+
+.settings-modal__body {
+  padding: 0 var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* The custom-duration fieldset only makes sense when "Custom" is the
+   selected technique, so it's hidden by default and revealed by JS. */
+#customFieldset {
+  display: none;
+}
+#customFieldset.is-visible {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.settings-group__title, .settings-group legend {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-300);
+  padding: 0;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.field__label { font-size: 0.9rem; }
+
+.field input[type="number"] {
+  width: 84px;
+  padding: 0.5rem 0.7rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  color: var(--ink-000);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+}
+.field input[type="number"]:focus { border-color: var(--surface-blue); }
+
+.field-hint {
+  font-size: 0.78rem;
+  color: var(--ink-500);
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.switch { position: relative; display: inline-block; }
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+.switch__track {
+  display: block;
+  width: 40px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.14);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.switch__thumb {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 3px;
+  border-radius: 50%;
+  background: var(--ink-000);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.switch input:checked + .switch__track { background: var(--coral); }
+.switch input:checked + .switch__track .switch__thumb { transform: translateX(16px); }
+.switch input:focus-visible + .switch__track { outline: 2px solid var(--coral-soft); outline-offset: 2px; }
+
+/* --------------------------------------------------------------------------
+   11. TOAST
+   -------------------------------------------------------------------------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-6);
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(10, 34, 51, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--ink-000);
+  padding: 0.8rem 1.4rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.88rem;
+  box-shadow: var(--shadow-soft);
+  z-index: 60;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-med) var(--ease-out), transform var(--dur-med) var(--ease-out);
+}
+.toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* --------------------------------------------------------------------------
+   12. BREATHING PHASE STATES
+   -------------------------------------------------------------------------- */
+/* JS toggles these classes on #breathingCircle to drive the scale via the
+   shared --breath-duration custom property (set per-phase in JS so the
+   CSS transition takes exactly as long as the phase itself). */
+.breathing-circle.phase-inhale { --breath-scale: 1; }
+.breathing-circle.phase-hold   { --breath-scale: 1; }
+.breathing-circle.phase-exhale { --breath-scale: 0.78; }
+.breathing-circle.phase-rest   { --breath-scale: 0.82; }
+
+.breath-wrap.is-pulsing .breath-ring--mid { animation-duration: 40s; }
+
+/* --------------------------------------------------------------------------
+   13. STATE-DEPENDENT VISIBILITY
+   -------------------------------------------------------------------------- */
+.state-work .break-stage { display: none; }
+.state-break .timer-stage { display: none; }
+
+/* --------------------------------------------------------------------------
+   14. RESPONSIVE
+   -------------------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .site-header { flex-wrap: wrap; padding: var(--space-4); }
+  .brand { order: 1; }
+  .header-actions { order: 2; }
+  .technique-switch { order: 3; width: 100%; justify-content: center; margin-top: var(--space-2); }
+  .stats-panel { grid-template-columns: repeat(2, 1fr); }
+  .stat-card--chart { grid-column: span 2; }
+}
+
+@media (max-width: 420px) {
+  .timer-controls { gap: var(--space-2); }
+  .btn { padding: 0.8rem 1.3rem; font-size: 0.88rem; }
+  .btn--primary { min-width: 118px; }
+  .brand-name { font-size: 1.1rem; }
+}
+
+/* --------------------------------------------------------------------------
+   15. REDUCED MOTION
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.2s !important;
+    scroll-behavior: auto !important;
+  }
+  .particle { display: none; }
+}
+
+/* JS also sets data-motion="reduced" on <body> when the in-app toggle is
+   used, independent of the OS-level media query. */
+body[data-motion="reduced"] * {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.2s !important;
+}
+body[data-motion="reduced"] .particle { display: none; }
+
+/* --------------------------------------------------------------------------
+   16. PRINT (just in case someone tries)
+   -------------------------------------------------------------------------- */
+@media print {
+  .ocean-backdrop, .header-actions, .settings-modal, .modal-backdrop, .toast { display: none; }
+}
