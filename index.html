@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Resurface — a break timer that actually resets you</title>
+<meta name="description" content="A 25/5 and 50/10 pomodoro timer with guided breathing, stretch, and eye-rest breaks designed to leave you as refreshed as a short nap." />
+<meta name="theme-color" content="#06121c" />
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23123b4f'/%3E%3Cpath d='M8 58c10-10 20 10 30 0s20-10 30 0 20 10 24 4' stroke='%237fd6d0' stroke-width='6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="style.css" />
+</head>
+<body class="state-work" data-technique="25-5" data-motion="full">
+
+  <!-- ============================================================
+       AMBIENT BACKDROP — a depth gradient that "resurfaces" from
+       abyss-dark to surface-light over the course of a break.
+       Purely decorative, so it is hidden from assistive tech.
+  ============================================================= -->
+  <div class="ocean-backdrop" aria-hidden="true" id="oceanBackdrop">
+    <div class="light-rays"></div>
+    <div class="light-rays light-rays--slow"></div>
+    <div class="particles" id="particles"></div>
+    <div class="grain"></div>
+  </div>
+
+  <a class="skip-link" href="#main">Skip to timer</a>
+
+  <!-- ============================================================
+       HEADER
+  ============================================================= -->
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="30" height="30">
+          <circle cx="24" cy="24" r="21" class="brand-mark__ring" />
+          <path d="M6 27c5-6 10 6 15 0s10-6 15 0 8 6 12 2" class="brand-mark__wave" />
+        </svg>
+      </span>
+      <span class="brand-name">Resurface</span>
+    </div>
+
+    <nav class="technique-switch" role="tablist" aria-label="Timer technique">
+      <button type="button" role="tab" aria-selected="true" data-technique="25-5" class="technique-btn is-active">
+        <span class="technique-btn__num">25</span><span class="technique-btn__sep">/</span><span class="technique-btn__num">5</span>
+      </button>
+      <button type="button" role="tab" aria-selected="false" data-technique="50-10" class="technique-btn">
+        <span class="technique-btn__num">50</span><span class="technique-btn__sep">/</span><span class="technique-btn__num">10</span>
+      </button>
+      <button type="button" role="tab" aria-selected="false" data-technique="custom" class="technique-btn">
+        Custom
+      </button>
+      <span class="technique-switch__thumb" aria-hidden="true"></span>
+    </nav>
+
+    <div class="header-actions">
+      <button type="button" id="soundToggle" class="icon-btn" aria-pressed="false" aria-label="Turn sound on">
+        <svg class="icon icon--sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 5V4L8 9H4z" /><path d="M16.5 8.5a5 5 0 0 1 0 7" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" /><path d="M19 6a9 9 0 0 1 0 12" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" /></svg>
+        <svg class="icon icon--sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 5V4L8 9H4z" /><line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+      </button>
+      <button type="button" id="settingsBtn" class="icon-btn" aria-haspopup="dialog" aria-controls="settingsModal" aria-label="Open settings">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M19.4 13a7.6 7.6 0 0 0 .1-2l2-1.5-2-3.4-2.3.9a7.7 7.7 0 0 0-1.7-1L15 3.5h-6l-.5 2.5a7.7 7.7 0 0 0-1.7 1l-2.3-.9-2 3.4L4.5 11a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.4 2.3-.9c.5.4 1.1.75 1.7 1L9 20.5h6l.5-2.5c.6-.25 1.2-.6 1.7-1l2.3.9 2-3.4-2.1-1.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       MAIN
+  ============================================================= -->
+  <main id="main">
+
+    <!-- ---------- WORK STAGE ---------- -->
+    <section class="timer-stage" id="workStage" aria-labelledby="workLabel">
+      <p class="timer-eyebrow" id="workLabel">Deep work</p>
+
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 300 300" aria-hidden="true">
+          <circle class="ring__track" cx="150" cy="150" r="135" />
+          <circle class="ring__progress" id="ringProgress" cx="150" cy="150" r="135" />
+        </svg>
+        <div class="ring-face">
+          <span class="ring-face__time" id="timeDisplay">25:00</span>
+          <span class="ring-face__sub" id="cycleLabel">Session 1</span>
+        </div>
+      </div>
+
+      <div class="session-dots" id="sessionDots" aria-hidden="true"></div>
+
+      <div class="timer-controls">
+        <button type="button" class="btn btn--ghost" id="resetBtn">Reset</button>
+        <button type="button" class="btn btn--primary" id="startPauseBtn">
+          <span class="btn__label">Start</span>
+        </button>
+        <button type="button" class="btn btn--ghost" id="skipBtn">Skip</button>
+      </div>
+
+      <p class="timer-hint" id="timerHint">Press <kbd>Space</kbd> to start, or dive into your work — I'll surface you when it's time.</p>
+    </section>
+
+    <!-- ---------- BREAK STAGE ---------- -->
+    <section class="break-stage" id="breakStage" hidden aria-labelledby="breakLabel">
+      <p class="timer-eyebrow" id="breakLabel">Coming up for air</p>
+
+      <div class="breath-wrap">
+        <svg class="breath-rings" viewBox="0 0 320 320" aria-hidden="true">
+          <circle class="breath-ring breath-ring--outer" cx="160" cy="160" r="140" />
+          <circle class="breath-ring breath-ring--mid" cx="160" cy="160" r="110" />
+        </svg>
+        <div class="breathing-circle" id="breathingCircle">
+          <span class="breathing-circle__phase" id="breathPhaseLabel">Settle in</span>
+          <span class="breathing-circle__count" id="breathCountLabel"></span>
+        </div>
+      </div>
+
+      <div class="stage-card" id="stageCard">
+        <span class="stage-card__icon" id="stageIcon" aria-hidden="true">🌊</span>
+        <div class="stage-card__text">
+          <h2 class="stage-card__title" id="stageTitle">Settle in</h2>
+          <p class="stage-card__body" id="stageBody">Let your shoulders drop away from your ears. You've earned this.</p>
+        </div>
+      </div>
+
+      <div class="stage-dots" id="stageDots" aria-hidden="true"></div>
+
+      <div class="break-footer">
+        <span class="break-footer__time" id="breakTimeDisplay">05:00</span>
+        <button type="button" class="btn btn--ghost btn--small" id="endBreakBtn">Back to work</button>
+      </div>
+    </section>
+
+    <!-- ---------- STATS ---------- -->
+    <section class="stats-panel" aria-label="Your focus stats">
+      <div class="stat-card">
+        <span class="stat-card__value" id="statSessions">0</span>
+        <span class="stat-card__label">sessions today</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card__value" id="statMinutes">0</span>
+        <span class="stat-card__label">focus minutes today</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card__value" id="statStreak">0</span>
+        <span class="stat-card__label">day streak</span>
+      </div>
+      <div class="stat-card stat-card--chart">
+        <div class="week-chart" id="weekChart" aria-hidden="true"></div>
+        <span class="stat-card__label">last 7 days</span>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <p>Built for the ritual between sprints. Fork it, tune it, make it yours on <a href="https://github.com/" target="_blank" rel="noopener">GitHub</a>.</p>
+  </footer>
+
+  <!-- ============================================================
+       SETTINGS MODAL
+  ============================================================= -->
+  <div class="modal-backdrop" id="modalBackdrop" hidden></div>
+  <div class="settings-modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+    <div class="settings-modal__header">
+      <h2 id="settingsTitle">Settings</h2>
+      <button type="button" class="icon-btn" id="closeSettingsBtn" aria-label="Close settings">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="19" y1="5" x2="5" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <div class="settings-modal__body">
+
+      <fieldset class="settings-group" id="customFieldset">
+        <legend>Custom durations</legend>
+        <label class="field">
+          <span class="field__label">Work minutes</span>
+          <input type="number" id="customWorkInput" min="1" max="180" value="25" inputmode="numeric" />
+        </label>
+        <label class="field">
+          <span class="field__label">Break minutes</span>
+          <input type="number" id="customBreakInput" min="1" max="60" value="5" inputmode="numeric" />
+        </label>
+        <p class="field-hint">Only used when the "Custom" technique is selected.</p>
+      </fieldset>
+
+      <div class="settings-group">
+        <span class="settings-group__title">Break ritual</span>
+
+        <label class="switch-row">
+          <span>Ambient sound</span>
+          <span class="switch">
+            <input type="checkbox" id="ambientToggle" />
+            <span class="switch__track"><span class="switch__thumb"></span></span>
+          </span>
+        </label>
+
+        <label class="switch-row">
+          <span>Chime on transitions</span>
+          <span class="switch">
+            <input type="checkbox" id="chimeToggle" checked />
+            <span class="switch__track"><span class="switch__thumb"></span></span>
+          </span>
+        </label>
+
+        <label class="switch-row">
+          <span>Desktop notifications</span>
+          <span class="switch">
+            <input type="checkbox" id="notifToggle" />
+            <span class="switch__track"><span class="switch__thumb"></span></span>
+          </span>
+        </label>
+
+        <label class="switch-row">
+          <span>Reduce motion</span>
+          <span class="switch">
+            <input type="checkbox" id="motionToggle" />
+            <span class="switch__track"><span class="switch__thumb"></span></span>
+          </span>
+        </label>
+      </div>
+
+      <div class="settings-group">
+        <span class="settings-group__title">Data</span>
+        <button type="button" class="btn btn--ghost btn--small" id="resetStatsBtn">Reset stats</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================
+       TOASTS & LIVE REGIONS
+  ============================================================= -->
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <div class="sr-only" id="srAnnouncer" aria-live="assertive"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
